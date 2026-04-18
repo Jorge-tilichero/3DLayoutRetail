@@ -54,16 +54,14 @@ def to_iso(x, y):
     iso_y = (x + y) * math.sin(ang)
     return iso_x, iso_y
 
-def dibujar_layout_oxxo_v26(conf):
+def dibujar_layout_oxxo_v27(conf):
     W, L = conf['ancho'], conf['largo']
     vista_iso = conf.get('modo_iso', False)
 
     fig, ax = plt.subplots(figsize=(14, 14))
     
-    # Manejo de la cuadrícula
     if vista_iso:
         ax.axis('off')
-        # Dibujar malla isométrica
         for ix in range(int(W)+1):
             x1, y1 = to_iso(ix, 0)
             x2, y2 = to_iso(ix, L)
@@ -72,7 +70,6 @@ def dibujar_layout_oxxo_v26(conf):
             x1, y1 = to_iso(0, iy)
             x2, y2 = to_iso(W, iy)
             ax.plot([x1, x2], [y1, y2], color='#E5E7E9', lw=0.5, zorder=0)
-        # Ajustar cámara
         ax.set_xlim(-L*0.9, W*0.9)
         ax.set_ylim(0, (W+L)*0.6)
     else:
@@ -95,7 +92,6 @@ def dibujar_layout_oxxo_v26(conf):
         ec = 'black'
         lw = 1
 
-        # Z-Sorting: En isométrico, lo que está "más cerca" tiene x+y menor. Debe dibujarse al final (zorder alto).
         z_calc = 1000 - int((x + y) * 10) if tipo == "Fisico" else 2
 
         if x < -0.05 or y < -0.05 or x + w > W + 0.05 or y + h > L + 0.05:
@@ -120,7 +116,6 @@ def dibujar_layout_oxxo_v26(conf):
                 if tipo == "Fisico": obs_fisicos.append((x, y, w, h, name))
                 elif tipo == "Pasillo": obs_pasillos.append((x, y, w, h, name))
 
-        # Render de Imagen (Evita deformaciones)
         dibujado_imagen = False
         if conf.get('modo_render', False) and img_base and tipo == "Fisico" and not choca:
             rot_norm = int(rot_text % 360)
@@ -131,18 +126,16 @@ def dibujar_layout_oxxo_v26(conf):
                 try:
                     img = mpimg.imread(ruta_img)
                     if vista_iso:
-                        # Si está en Isométrico: Mantener Aspect Ratio y colocar en coordenadas ISO
                         img_h, img_w = img.shape[:2]
                         aspect = img_w / img_h
-                        scale = math.hypot(w, h) * 1.0  # Ajuste de escala
+                        scale = math.hypot(w, h) * 1.0
                         ext_w = scale
                         ext_h = scale / aspect
                         
                         icx, icy = to_iso(x + w/2, y + h/2)
-                        icy += ext_h * 0.15 # Elevar la imagen ligeramente por el volumen 3D
+                        icy += ext_h * 0.15 
                         ax.imshow(img, extent=[icx - ext_w/2, icx + ext_w/2, icy - ext_h/2, icy + ext_h/2], zorder=z_calc)
                     else:
-                        # Si está en plano, aplastar a la huella original (comportamiento técnico 2D)
                         ax.imshow(img, extent=[x, x+w, y, y+h], zorder=z_calc)
                     
                     dibujado_imagen = True
@@ -152,7 +145,6 @@ def dibujar_layout_oxxo_v26(conf):
             else:
                 if f"⚠️ Falta: {nombre_archivo}" not in log_imagenes: log_imagenes.append(f"⚠️ Falta: {nombre_archivo}")
 
-        # Dibujo Geométrico si no hay imagen
         if not dibujado_imagen:
             if vista_iso:
                 pts = [to_iso(x, y), to_iso(x+w, y), to_iso(x+w, y+h), to_iso(x, y+h)]
@@ -168,7 +160,6 @@ def dibujar_layout_oxxo_v26(conf):
                     ax.text(x + w/2, y + h/2, texto, ha='center', va='center', rotation=rot_visual, fontsize=font, color=txt_col, weight=weight, zorder=z_calc+1)
         return w, h
 
-    # Dibujar Muro Perimetral/Piso
     if vista_iso:
         pts_piso = [to_iso(0,0), to_iso(W,0), to_iso(W,L), to_iso(0,L)]
         ax.add_patch(patches.Polygon(pts_piso, closed=True, fill=False, ec='black', lw=4, zorder=0))
@@ -249,70 +240,85 @@ def dibujar_layout_oxxo_v26(conf):
             area_exh += (w_chk * PROF_CHECK)
 
     # ==========================================
-    # 4. CUARTO FRÍO
+    # 4. CUARTO FRÍO (Módulos individuales)
     # ==========================================
     if conf['t_frio']:
         xf, yf = conf['pos_frio_x'], conf['pos_frio_y']
         rot_f = conf['rot_frio']
+        ptas = conf['cant_frio']
         
-        if conf['forma_frio'] == 'Lineal':
-            wf = conf['cant_frio'] * MOD_2FT
-            if rot_f == 0: 
-                registrar_obj(xf, yf, wf, PROF_FRIO, '#AED6F1', "FRÍO", weight='bold', name="Frio", img_base="frio", rot_text=0)
-                if conf['t_pasillos']: registrar_obj(xf, yf - PASILLO_STD, wf, PASILLO_STD, '#FCF3CF', "P. FRÍO", alpha=0.6, tipo="Pasillo", name="Pas Frio")
-            elif rot_f == 90:
-                registrar_obj(xf, yf, PROF_FRIO, wf, '#AED6F1', "FRÍO", rot_text=90, weight='bold', name="Frio", img_base="frio")
-                if conf['t_pasillos']: registrar_obj(xf + PROF_FRIO, yf, PASILLO_STD, wf, '#FCF3CF', "P. FRÍO", rot_text=90, alpha=0.6, tipo="Pasillo", name="Pas Frio")
-            elif rot_f == 180:
-                registrar_obj(xf, yf, wf, PROF_FRIO, '#AED6F1', "FRÍO", weight='bold', name="Frio", img_base="frio", rot_text=180)
-                if conf['t_pasillos']: registrar_obj(xf, yf + PROF_FRIO, wf, PASILLO_STD, '#FCF3CF', "P. FRÍO", alpha=0.6, tipo="Pasillo", name="Pas Frio")
-            elif rot_f == 270:
-                registrar_obj(xf, yf, PROF_FRIO, wf, '#AED6F1', "FRÍO", rot_text=270, weight='bold', name="Frio", img_base="frio")
-                if conf['t_pasillos']: registrar_obj(xf - PASILLO_STD, yf, PASILLO_STD, wf, '#FCF3CF', "P. FRÍO", rot_text=90, alpha=0.6, tipo="Pasillo", name="Pas Frio")
-            area_exh += (wf * PROF_FRIO)
+        for p in range(ptas):
+            if rot_f == 0: registrar_obj(xf + p*MOD_2FT, yf, MOD_2FT, PROF_FRIO, '#AED6F1', f"F{p+1}", weight='bold', rot_text=0, name=f"Frio {p}", img_base="frio")
+            elif rot_f == 90: registrar_obj(xf, yf + p*MOD_2FT, PROF_FRIO, MOD_2FT, '#AED6F1', f"F{p+1}", rot_text=90, weight='bold', name=f"Frio {p}", img_base="frio")
+            elif rot_f == 180: registrar_obj(xf - (p+1)*MOD_2FT, yf - PROF_FRIO, MOD_2FT, PROF_FRIO, '#AED6F1', f"F{p+1}", weight='bold', rot_text=180, name=f"Frio {p}", img_base="frio")
+            elif rot_f == 270: registrar_obj(xf - PROF_FRIO, yf - (p+1)*MOD_2FT, PROF_FRIO, MOD_2FT, '#AED6F1', f"F{p+1}", rot_text=270, weight='bold', name=f"Frio {p}", img_base="frio")
+        
+        # Pasillo General
+        wf = ptas * MOD_2FT
+        if conf['t_pasillos']:
+            if rot_f == 0: registrar_obj(xf, yf - PASILLO_STD, wf, PASILLO_STD, '#FCF3CF', "P. FRÍO", alpha=0.6, tipo="Pasillo", name="Pas Frio")
+            elif rot_f == 90: registrar_obj(xf + PROF_FRIO, yf, PASILLO_STD, wf, '#FCF3CF', "P. FRÍO", rot_text=90, alpha=0.6, tipo="Pasillo", name="Pas Frio")
+            elif rot_f == 180: registrar_obj(xf - wf, yf, wf, PASILLO_STD, '#FCF3CF', "P. FRÍO", alpha=0.6, tipo="Pasillo", name="Pas Frio")
+            elif rot_f == 270: registrar_obj(xf - PASILLO_STD - PROF_FRIO, yf - wf, PASILLO_STD, wf, '#FCF3CF', "P. FRÍO", rot_text=90, alpha=0.6, tipo="Pasillo", name="Pas Frio")
+        area_exh += (wf * PROF_FRIO)
 
     # ==========================================
-    # 5. GÓNDOLAS CENTRALES
+    # 5. GÓNDOLAS CENTRALES (Módulos individuales)
     # ==========================================
     if conf['t_gondolas']:
         xg, yg = conf['pos_gon_x'], conf['pos_gon_y']
         rot_g = conf['rot_gon'] 
         tramos = conf['cant_tramos']
         largo_g = tramos * MOD_3FT
-        w_gon_total = GONDOLA_PROF
-        h_gon_total = largo_g + CABECERA_PROF*2
         
         for i in range(conf['cant_trenes']):
-            if rot_g == 0 or rot_g == 180: 
-                registrar_obj(xg, yg, w_gon_total, h_gon_total, '#ABB2B9', "GÓNDOLA", rot_text=rot_g, font=8, name=f"Tren {i+1}", img_base="gondola")
-                if conf['t_pasillos']: registrar_obj(xg + w_gon_total, yg, conf['pas_gon'], h_gon_total, '#EBEDEF', "", rot_text=90, alpha=0.6, tipo="Pasillo", name=f"Pas Gon {i+1}")
-                xg += w_gon_total + conf['pas_gon']
-            elif rot_g == 90 or rot_g == 270: 
-                registrar_obj(xg, yg, h_gon_total, w_gon_total, '#ABB2B9', "GÓNDOLA", rot_text=rot_g, font=8, name=f"Tren {i+1}", img_base="gondola")
-                if conf['t_pasillos']: registrar_obj(xg, yg + w_gon_total, h_gon_total, conf['pas_gon'], '#EBEDEF', "", alpha=0.6, tipo="Pasillo", name=f"Pas Gon {i+1}")
-                yg += w_gon_total + conf['pas_gon']
-            area_exh += (w_gon_total * h_gon_total)
+            if rot_g == 0: 
+                registrar_obj(xg, yg, GONDOLA_PROF, CABECERA_PROF, '#E74C3C', "CAB", rot_text=0, font=5, name=f"Cab Sur {i+1}", img_base="gondola_cab")
+                for t in range(tramos): registrar_obj(xg, yg + CABECERA_PROF + t*MOD_3FT, GONDOLA_PROF, MOD_3FT, '#ABB2B9', f"Tr{t+1}", rot_text=0, font=6, name=f"Tr{t+1} Tren{i+1}", img_base="gondola_tramo")
+                registrar_obj(xg, yg + CABECERA_PROF + largo_g, GONDOLA_PROF, CABECERA_PROF, '#E74C3C', "CAB", rot_text=0, font=5, name=f"Cab Norte {i+1}", img_base="gondola_cab")
+                if conf['t_pasillos']: registrar_obj(xg + GONDOLA_PROF, yg, conf['pas_gon'], largo_g + CABECERA_PROF*2, '#EBEDEF', "", rot_text=90, alpha=0.6, tipo="Pasillo", name=f"Pas Gon {i+1}")
+                xg += GONDOLA_PROF + conf['pas_gon']
+            elif rot_g == 90:
+                registrar_obj(xg, yg, CABECERA_PROF, GONDOLA_PROF, '#E74C3C', "CAB", rot_text=90, font=5, name=f"Cab Oeste {i+1}", img_base="gondola_cab")
+                for t in range(tramos): registrar_obj(xg + CABECERA_PROF + t*MOD_3FT, yg, MOD_3FT, GONDOLA_PROF, '#ABB2B9', f"Tr{t+1}", rot_text=90, font=6, name=f"Tr{t+1} Tren{i+1}", img_base="gondola_tramo")
+                registrar_obj(xg + CABECERA_PROF + largo_g, yg, CABECERA_PROF, GONDOLA_PROF, '#E74C3C', "CAB", rot_text=90, font=5, name=f"Cab Este {i+1}", img_base="gondola_cab")
+                if conf['t_pasillos']: registrar_obj(xg, yg + GONDOLA_PROF, largo_g + CABECERA_PROF*2, conf['pas_gon'], '#EBEDEF', "", alpha=0.6, tipo="Pasillo", name=f"Pas Gon {i+1}")
+                yg += GONDOLA_PROF + conf['pas_gon']
+            elif rot_g == 180:
+                registrar_obj(xg - GONDOLA_PROF, yg - CABECERA_PROF, GONDOLA_PROF, CABECERA_PROF, '#E74C3C', "CAB", rot_text=180, font=5, name=f"Cab Norte {i+1}", img_base="gondola_cab")
+                for t in range(tramos): registrar_obj(xg - GONDOLA_PROF, yg - CABECERA_PROF - (t+1)*MOD_3FT, GONDOLA_PROF, MOD_3FT, '#ABB2B9', f"Tr{t+1}", rot_text=180, font=6, name=f"Tr{t+1} Tren{i+1}", img_base="gondola_tramo")
+                registrar_obj(xg - GONDOLA_PROF, yg - CABECERA_PROF*2 - largo_g, GONDOLA_PROF, CABECERA_PROF, '#E74C3C', "CAB", rot_text=180, font=5, name=f"Cab Sur {i+1}", img_base="gondola_cab")
+                if conf['t_pasillos']: registrar_obj(xg - GONDOLA_PROF - conf['pas_gon'], yg - largo_g - CABECERA_PROF*2, conf['pas_gon'], largo_g + CABECERA_PROF*2, '#EBEDEF', "", rot_text=90, alpha=0.6, tipo="Pasillo", name=f"Pas Gon {i+1}")
+                xg -= (GONDOLA_PROF + conf['pas_gon'])
+            elif rot_g == 270:
+                registrar_obj(xg - CABECERA_PROF, yg - GONDOLA_PROF, CABECERA_PROF, GONDOLA_PROF, '#E74C3C', "CAB", rot_text=270, font=5, name=f"Cab Este {i+1}", img_base="gondola_cab")
+                for t in range(tramos): registrar_obj(xg - CABECERA_PROF - (t+1)*MOD_3FT, yg - GONDOLA_PROF, MOD_3FT, GONDOLA_PROF, '#ABB2B9', f"Tr{t+1}", rot_text=270, font=6, name=f"Tr{t+1} Tren{i+1}", img_base="gondola_tramo")
+                registrar_obj(xg - CABECERA_PROF*2 - largo_g, yg - GONDOLA_PROF, CABECERA_PROF, GONDOLA_PROF, '#E74C3C', "CAB", rot_text=270, font=5, name=f"Cab Oeste {i+1}", img_base="gondola_cab")
+                if conf['t_pasillos']: registrar_obj(xg - largo_g - CABECERA_PROF*2, yg - GONDOLA_PROF - conf['pas_gon'], largo_g + CABECERA_PROF*2, conf['pas_gon'], '#EBEDEF', "", alpha=0.6, tipo="Pasillo", name=f"Pas Gon {i+1}")
+                yg -= (GONDOLA_PROF + conf['pas_gon'])
+
+            area_exh += GONDOLA_PROF * (largo_g + CABECERA_PROF*2)
 
     # ==========================================
-    # 6. FOODVENIENCE
+    # 6. FOODVENIENCE (Módulos Individuales)
     # ==========================================
     if conf['t_cafe']:
         xc, yc = conf['pos_cafe_x'], conf['pos_cafe_y']
         rot_c = conf['rot_cafe']
         mods = conf['cant_cafe']
+        
+        for m in range(mods):
+            if rot_c == 0: registrar_obj(xc + m*MOD_2FT, yc, MOD_2FT, PROF_CAFE, '#FAD7A0', f"C{m+1}", rot_text=0, name=f"Cafe {m}", img_base="cafe")
+            elif rot_c == 90: registrar_obj(xc, yc + m*MOD_2FT, PROF_CAFE, MOD_2FT, '#FAD7A0', f"C{m+1}", rot_text=90, name=f"Cafe {m}", img_base="cafe")
+            elif rot_c == 180: registrar_obj(xc - (m+1)*MOD_2FT, yc - PROF_CAFE, MOD_2FT, PROF_CAFE, '#FAD7A0', f"C{m+1}", rot_text=180, name=f"Cafe {m}", img_base="cafe")
+            elif rot_c == 270: registrar_obj(xc - PROF_CAFE, yc - (m+1)*MOD_2FT, PROF_CAFE, MOD_2FT, '#FAD7A0', f"C{m+1}", rot_text=270, name=f"Cafe {m}", img_base="cafe")
+        
         wf = mods * MOD_2FT
-        if rot_c == 0: 
-            registrar_obj(xc, yc, wf, PROF_CAFE, '#FAD7A0', "CAFÉ", rot_text=0, name="Cafe", img_base="cafe")
-            if conf['t_pasillos']: registrar_obj(xc, yc + PROF_CAFE, wf, PASILLO_STD, '#FADBD8', "P. CAFE", alpha=0.5, tipo="Pasillo", name="Pas Cafe")
-        elif rot_c == 90:
-            registrar_obj(xc, yc, PROF_CAFE, wf, '#FAD7A0', "CAFÉ", rot_text=90, name="Cafe", img_base="cafe")
-            if conf['t_pasillos']: registrar_obj(xc + PROF_CAFE, yc, PASILLO_STD, wf, '#FADBD8', "P. CAFE", rot_text=90, alpha=0.5, tipo="Pasillo", name="Pas Cafe")
-        elif rot_c == 180:
-            registrar_obj(xc, yc, wf, PROF_CAFE, '#FAD7A0', "CAFÉ", rot_text=180, name="Cafe", img_base="cafe")
-            if conf['t_pasillos']: registrar_obj(xc, yc - PASILLO_STD, wf, PASILLO_STD, '#FADBD8', "P. CAFE", alpha=0.5, tipo="Pasillo", name="Pas Cafe")
-        elif rot_c == 270:
-            registrar_obj(xc, yc, PROF_CAFE, wf, '#FAD7A0', "CAFÉ", rot_text=270, name="Cafe", img_base="cafe")
-            if conf['t_pasillos']: registrar_obj(xc - PASILLO_STD, yc, PASILLO_STD, wf, '#FADBD8', "P. CAFE", rot_text=90, alpha=0.5, tipo="Pasillo", name="Pas Cafe")
+        if conf['t_pasillos']:
+            if rot_c == 0: registrar_obj(xc, yc + PROF_CAFE, wf, PASILLO_STD, '#FADBD8', "P. CAFE", alpha=0.5, tipo="Pasillo", name="Pas Cafe")
+            elif rot_c == 90: registrar_obj(xc + PROF_CAFE, yc, PASILLO_STD, wf, '#FADBD8', "P. CAFE", rot_text=90, alpha=0.5, tipo="Pasillo", name="Pas Cafe")
+            elif rot_c == 180: registrar_obj(xc - wf, yc - PASILLO_STD - PROF_CAFE, wf, PASILLO_STD, '#FADBD8', "P. CAFE", alpha=0.5, tipo="Pasillo", name="Pas Cafe")
+            elif rot_c == 270: registrar_obj(xc - PASILLO_STD - PROF_CAFE, yc - wf, PASILLO_STD, wf, '#FADBD8', "P. CAFE", rot_text=90, alpha=0.5, tipo="Pasillo", name="Pas Cafe")
         area_exh += (wf * PROF_CAFE)
 
     # ==========================================
@@ -484,7 +490,7 @@ conf.update({
 })
 
 with col_plot:
-    fig, errores, log_imgs, pct_exh, pct_nav, a_tot, a_com, a_op_real = dibujar_layout_oxxo_v26(conf)
+    fig, errores, log_imgs, pct_exh, pct_nav, a_tot, a_com, a_op_real = dibujar_layout_oxxo_v27(conf)
     st.pyplot(fig)
     
     col_pdf, col_svg = st.columns(2)
